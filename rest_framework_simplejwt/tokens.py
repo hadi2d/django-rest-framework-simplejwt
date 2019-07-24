@@ -164,7 +164,7 @@ class Token:
 
         token = cls()
         token[api_settings.USER_ID_CLAIM] = user_id
-
+        token['password_changed_at'] = user.password_changed_at
         return token
 
 
