@@ -1,3 +1,4 @@
+from dateutil.parser import parse
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import HTTP_HEADER_ENCODING, authentication
 
@@ -73,7 +74,8 @@ class JWTAuthentication(authentication.BaseAuthentication):
 
         if len(parts) != 2:
             raise AuthenticationFailed(
-                _('Authorization header must contain two space-delimited values'),
+                _(
+                    'Authorization header must contain two space-delimited values'),
                 code='bad_authorization_header',
             )
 
@@ -105,16 +107,24 @@ class JWTAuthentication(authentication.BaseAuthentication):
         try:
             user_id = validated_token[api_settings.USER_ID_CLAIM]
         except KeyError:
-            raise InvalidToken(_('Token contained no recognizable user identification'))
+            raise InvalidToken(
+                _('Token contained no recognizable user identification'))
 
         try:
             user = User.objects.get(**{api_settings.USER_ID_FIELD: user_id})
         except User.DoesNotExist:
-            raise AuthenticationFailed(_('User not found'), code='user_not_found')
+            raise AuthenticationFailed(_('User not found'),
+                                       code='user_not_found')
 
         if not user.is_active:
-            raise AuthenticationFailed(_('User is inactive'), code='user_inactive')
+            raise AuthenticationFailed(_('User is inactive'),
+                                       code='user_inactive')
 
+        # Check user reset password
+        password_changed_at = validated_token.get('password_changed_at')
+        if password_changed_at:
+            if parse(password_changed_at) != user.password_changed_at:
+                raise InvalidToken
         return user
 
 
@@ -127,6 +137,7 @@ class JWTTokenUserAuthentication(JWTAuthentication):
         if api_settings.USER_ID_CLAIM not in validated_token:
             # The TokenUser class assumes tokens will have a recognizable user
             # identifier claim.
-            raise InvalidToken(_('Token contained no recognizable user identification'))
+            raise InvalidToken(
+                _('Token contained no recognizable user identification'))
 
         return TokenUser(validated_token)
