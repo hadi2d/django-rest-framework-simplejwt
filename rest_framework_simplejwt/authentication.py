@@ -122,7 +122,7 @@ class JWTAuthentication(authentication.BaseAuthentication):
 
         # Check user reset password
         password_changed_at = validated_token.get('password_changed_at')
-        if password_changed_at:
+        if password_changed_at and user.password_changed_at:
             if parse(password_changed_at) != user.password_changed_at:
                 raise InvalidToken
         return user
